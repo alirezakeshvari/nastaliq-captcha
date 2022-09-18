@@ -1,0 +1,16 @@
+{
+  "name": "nastaliq-captcha",
+  "version": "1.0.0",
+  "description": "Persian offline captcha with Nastaliq font",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "captcha",
+    "nastaliq",
+    "persian"
+  ],
+  "author": "alirezakeshvari",
+  "license": "ISC"
+}
