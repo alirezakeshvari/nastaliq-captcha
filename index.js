@@ -114,7 +114,7 @@ const createCaptcha = (width, height, from, to) => {
   const imgBuffer = canvas.toBuffer("image/png");
   return {
     number,
-    image: "data:image/png;base64," + Buffer.from(imgBuffer).toString("base64"),
+    image: Buffer.from(imgBuffer).toString("base64"),
   };
 };
 
