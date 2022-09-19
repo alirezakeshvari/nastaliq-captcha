@@ -12,5 +12,10 @@
     "persian"
   ],
   "author": "alirezakeshvari",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "canvas": "^2.10.1",
+    "persian-number-tostring": "^1.0.0",
+    "randomcolor": "^0.6.2"
+  }
 }
