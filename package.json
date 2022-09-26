@@ -1,10 +1,14 @@
 {
   "name": "nastaliq-captcha",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Persian offline captcha with Nastaliq font",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alirezakeshvari/nastaliq-captcha.git"
   },
   "keywords": [
     "captcha",
