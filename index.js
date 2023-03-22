@@ -11,9 +11,12 @@ registerFont("node_modules/nastaliq-captcha/Dima.ttf", {
 registerFont("node_modules/nastaliq-captcha/Shekasteh.ttf", {
   family: "Shekasteh",
 });
+registerFont("node_modules/mehr/mehr.ttf", {
+  family: "Mehr",
+});
 
 const randomFont = () => {
-  const fonts = ["IranNastaliq", "Dima", "Shekasteh"];
+  const fonts = ["IranNastaliq", "Dima", "Shekasteh", "Mehr"];
   return fonts[Math.floor(Math.random() * fonts.length)];
 };
 
