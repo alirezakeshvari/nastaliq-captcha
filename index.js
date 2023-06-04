@@ -51,6 +51,12 @@ const invertColor = (col) => {
   return inverseColor;
 };
 
+/**
+ * @param {number} width - pixel
+ * @param {number} height - pixel
+ * @param {number} from - unsigned integer
+ * @param {number} to - unsigned integer
+ */
 const createCaptcha = (width, height, from, to) => {
   let number = String(Math.floor(Math.random() * (to - from) + from));
   if (number.split("").includes("0")) {
