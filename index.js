@@ -2,21 +2,12 @@ const Buffer = require("buffer").Buffer;
 const { createCanvas, registerFont } = require("canvas");
 const PersianNumberToString = require("persian-number-tostring");
 const randomColor = require("randomcolor");
-registerFont("node_modules/nastaliq-captcha/IranNastaliq.ttf", {
+registerFont("node_modules/nastaliq-captcha/IranNastaliq.woff", {
   family: "IranNastaliq",
-});
-registerFont("node_modules/nastaliq-captcha/Dima.ttf", {
-  family: "Dima",
-});
-registerFont("node_modules/nastaliq-captcha/Shekasteh.ttf", {
-  family: "Shekasteh",
-});
-registerFont("node_modules/mehr/mehr.ttf", {
-  family: "Mehr",
 });
 
 const randomFont = () => {
-  const fonts = ["IranNastaliq", "Dima", "Shekasteh", "Mehr"];
+  const fonts = ["IranNastaliq"];
   return fonts[Math.floor(Math.random() * fonts.length)];
 };
 

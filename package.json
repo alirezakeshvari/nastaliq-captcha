@@ -19,7 +19,6 @@
   "license": "ISC",
   "dependencies": {
     "canvas": "^2.10.1",
-    "mehr": "^1.0.2",
     "persian-number-tostring": "^1.0.0",
     "randomcolor": "^0.6.2"
   }
