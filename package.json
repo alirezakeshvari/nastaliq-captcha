@@ -1,6 +1,6 @@
 {
   "name": "nastaliq-captcha",
-  "version": "1.1.0",
+  "version": "1.1.2",
   "description": "Persian offline captcha with Nastaliq font",
   "main": "index.js",
   "scripts": {
