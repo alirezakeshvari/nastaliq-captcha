@@ -2,14 +2,9 @@ const Buffer = require("buffer").Buffer;
 const { createCanvas, registerFont } = require("canvas");
 const PersianNumberToString = require("persian-number-tostring");
 const randomColor = require("randomcolor");
-registerFont("node_modules/nastaliq-captcha/IranNastaliq.woff", {
+registerFont("node_modules/nastaliq-captcha/IranNastaliq.ttf", {
   family: "IranNastaliq",
 });
-
-const randomFont = () => {
-  const fonts = ["IranNastaliq"];
-  return fonts[Math.floor(Math.random() * fonts.length)];
-};
 
 const invertColor = (col) => {
   col = col.toLowerCase();
@@ -42,13 +37,7 @@ const invertColor = (col) => {
   return inverseColor;
 };
 
-/**
- * @param {number} width - pixel
- * @param {number} height - pixel
- * @param {number} from - unsigned integer
- * @param {number} to - unsigned integer
- */
-const createCaptcha = (width, height, from, to) => {
+const createCaptcha = ({ width, height, from, to, lines = 0 }) => {
   let number = String(Math.floor(Math.random() * (to - from) + from));
   if (number.split("").includes("0")) {
     number = number.replaceAll("0", Math.floor(Math.random() * 8 + 1));
@@ -62,7 +51,7 @@ const createCaptcha = (width, height, from, to) => {
   context.fillStyle = bgColor;
   context.fillRect(0, 0, width, height);
   let fontSize = 100;
-  const font = randomFont();
+  const font = "IranNastaliq";
   do {
     fontSize--;
     context.font = `${fontSize}px ${font}`;
@@ -72,45 +61,23 @@ const createCaptcha = (width, height, from, to) => {
   context.textAlign = "center";
   context.fillStyle = textColor;
   context.fillText(text, width / 2, height / 1.6);
-  // line 1
-  context.beginPath();
-  context.moveTo(
-    Math.floor(Math.random() * (width / 10)),
-    Math.floor(Math.random() * height)
-  );
-  context.lineTo(
-    Math.floor(Math.random() * (width - width / 1.2) + width / 1.2),
-    Math.floor(Math.random() * height)
-  );
-  context.lineWidth = Math.floor(Math.random() * 2 + 1);
-  context.strokeStyle = textColor;
-  context.stroke();
-  // line 2
-  context.beginPath();
-  context.moveTo(
-    Math.floor(Math.random() * (width / 10)),
-    Math.floor(Math.random() * height)
-  );
-  context.lineTo(
-    Math.floor(Math.random() * width),
-    Math.floor(Math.random() * height)
-  );
-  context.lineWidth = Math.floor(Math.random() * 2 + 1);
-  context.strokeStyle = randomColor();
-  context.stroke();
-  // line 3
-  context.beginPath();
-  context.moveTo(
-    Math.floor(Math.random() * (width - width / 10) + width / 10),
-    Math.floor(Math.random() * height)
-  );
-  context.lineTo(
-    Math.floor(Math.random() * (width / 10)),
-    Math.floor(Math.random() * height)
-  );
-  context.lineWidth = Math.floor(Math.random() * 2 + 1);
-  context.strokeStyle = randomColor();
-  context.stroke();
+
+  // lines
+  for (let lineIndex = 0; lineIndex < lines; lineIndex++) {
+    context.beginPath();
+    context.moveTo(
+      Math.floor(Math.random() * (width / 10)),
+      Math.floor(Math.random() * height)
+    );
+    context.lineTo(
+      Math.floor(Math.random() * (width - width / 1.2) + width / 1.2),
+      Math.floor(Math.random() * height)
+    );
+    context.lineWidth = Math.floor(Math.random() * 2 + 1);
+    context.strokeStyle = randomColor();
+    context.stroke();
+  }
+
   const imgBuffer = canvas.toBuffer("image/png");
   return {
     number,
