@@ -19,7 +19,13 @@ const app = express();
 const port = 4000;
 
 app.get("/captcha", (req, res) => {
-  const captcha = createCaptcha(150, 50, 100, 999); // width, height, min, max
+  const captcha = createCaptcha({
+    width: 150,
+    height: 50,
+    from: 100,
+    to: 999,
+    lines: 3,
+  });
   const number = captcha.number; // You can store it in a session and compare with user answer
   const image = new Buffer(captcha.image, "base64");
 
