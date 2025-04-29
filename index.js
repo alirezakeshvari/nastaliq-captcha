@@ -2,9 +2,12 @@ const Buffer = require("buffer").Buffer;
 const { createCanvas, registerFont } = require("canvas");
 const PersianNumberToString = require("persian-number-tostring");
 const randomColor = require("randomcolor");
-registerFont("node_modules/nastaliq-captcha/IranNastaliq.ttf", {
-  family: "IranNastaliq",
-});
+const path = require('path');
+
+registerFont(
+  path.join(__dirname, "IranNastaliq.ttf"),
+  { family: "IranNastaliq" }
+);
 
 const invertColor = (col) => {
   col = col.toLowerCase();
@@ -37,7 +40,18 @@ const invertColor = (col) => {
   return inverseColor;
 };
 
-const createCaptcha = ({ width, height, from, to, lines = 0 }) => {
+function createCaptcha(...args) {
+  let width, height, from, to, lines;
+
+  if (args.length === 1 && typeof args[0] === "object" && args[0] !== null) {
+    // ورودی به صورت آبجکت
+    ({ width, height, from, to, lines = 0 } = args[0]);
+  } else {
+    // ورودی به صورت پارامترهای جدا
+    [width, height, from, to, lines = 0] = args;
+  }
+
+  // ادامه کد تو (بدون تغییر):
   let number = String(Math.floor(Math.random() * (to - from) + from));
   if (number.split("").includes("0")) {
     number = number.replaceAll("0", Math.floor(Math.random() * 8 + 1));
@@ -83,6 +97,6 @@ const createCaptcha = ({ width, height, from, to, lines = 0 }) => {
     number,
     image: Buffer.from(imgBuffer).toString("base64"),
   };
-};
+}
 
 module.exports = { createCaptcha };

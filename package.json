@@ -4,7 +4,7 @@
   "description": "Persian offline captcha with Nastaliq font",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
   },
   "repository": {
     "type": "git",
@@ -18,8 +18,11 @@
   "author": "alirezakeshvari",
   "license": "ISC",
   "dependencies": {
-    "canvas": "^2.10.1",
+    "canvas": "^3.1.0",
     "persian-number-tostring": "^1.0.0",
     "randomcolor": "^0.6.2"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
   }
 }
