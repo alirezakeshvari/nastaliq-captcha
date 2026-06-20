@@ -1,6 +1,6 @@
 {
   "name": "nastaliq-captcha",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -10,7 +10,7 @@
   },
   "repository": "https://github.com/alirezakeshvari/nastaliq-captcha.git",
   "author": "alirezakeshvari <alireza.ksv@gmail.com>",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "dependencies": {
     "@types/node": "^25.9.3",
     "canvas": "^3.2.3",

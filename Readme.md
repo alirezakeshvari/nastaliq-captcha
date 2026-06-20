@@ -174,4 +174,4 @@ Tests mock the native `canvas` dependency, so the suite runs without needing Cai
 
 ## License
 
-Add your license here (e.g. MIT).
+Nastaliq CAPTCHA is source-available package. The source code is publicly visible for transparency and contribution purposes, but redistribution, derivative works, and competing products are prohibited without permission.
