@@ -1,28 +1,25 @@
 {
   "name": "nastaliq-captcha",
-  "version": "2.0.1",
-  "description": "Persian offline captcha with Nastaliq font",
-  "main": "index.js",
+  "version": "3.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
+    "build": "tsc && yarn copy-assets",
+    "copy-assets": "cpy \"src/assets/**/*\" dist/assets --parents",
     "test": "jest"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/alirezakeshvari/nastaliq-captcha.git"
-  },
-  "keywords": [
-    "captcha",
-    "nastaliq",
-    "persian"
-  ],
-  "author": "alirezakeshvari",
-  "license": "ISC",
+  "repository": "https://github.com/alirezakeshvari/nastaliq-captcha.git",
+  "author": "alirezakeshvari <alireza.ksv@gmail.com>",
+  "license": "MIT",
   "dependencies": {
-    "canvas": "^3.1.0",
-    "persian-number-tostring": "^1.0.0",
-    "randomcolor": "^0.6.2"
+    "@types/node": "^25.9.3",
+    "canvas": "^3.2.3",
+    "typescript": "^6.0.3"
   },
   "devDependencies": {
-    "jest": "^29.7.0"
+    "@types/jest": "^30.0.0",
+    "cpy-cli": "^7.0.0",
+    "jest": "^30.4.2",
+    "ts-jest": "^29.4.11"
   }
 }
