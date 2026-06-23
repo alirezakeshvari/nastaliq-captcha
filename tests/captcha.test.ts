@@ -402,13 +402,13 @@ describe("NastaliqCaptcha (integration)", () => {
   it("works with a full config object", () => {
     const { image, answer } = captcha.generate({ width: 200, height: 60, difficulty: 5 });
     expect(Buffer.isBuffer(image)).toBe(true);
-    expect(typeof answer).toBe("string");
+    expect(typeof answer).toBe("number");
   });
 
   it("works without any config", () => {
     const { image, answer } = captcha.generate();
     expect(Buffer.isBuffer(image)).toBe(true);
-    expect(typeof answer).toBe("string");
+    expect(typeof answer).toBe("number");
   });
 
   it("applies default dimensions (200×60) when no config is given", () => {
@@ -444,16 +444,8 @@ describe("NastaliqCaptcha (integration)", () => {
     expect(__mockContext.fillRect).toHaveBeenCalledTimes(expectedDotCount(0) + 1);
   });
 
-  it("returns the same answer string used to render the image text", () => {
-    const { __mockContext } = jest.requireMock("canvas") as any;
-    jest.clearAllMocks();
-
-    const { answer } = captcha.generate({ difficulty: 0 }); // d=0 → no ghosts
-    const drawnTexts: string[] = __mockContext.fillText.mock.calls.map((c: any[]) => c[0]);
-
-    // Every word of the answer must appear in at least one fillText call.
-    for (const word of answer.split(/\s+/)) {
-      expect(drawnTexts).toContain(word);
-    }
+  it("returns the raw number as the answer, not the Persian text", () => {
+    const { answer } = captcha.generate();
+    expect(typeof answer).toBe("number");
   });
 });

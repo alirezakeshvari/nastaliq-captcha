@@ -35,7 +35,7 @@ export interface CaptchaResult {
    * deciding how you want challenge state stored/verified — happy to help
    * wire that up if useful.
    */
-  answer: string;
+  answer: number;
 }
 
 /**
@@ -73,7 +73,7 @@ export class NastaliqCaptcha {
 
     return {
       image,
-      answer: challenge.answer,
+      answer: challenge.raw,
     };
   }
 }
