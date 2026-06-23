@@ -9,6 +9,8 @@ export interface CaptchaConfig {
   width?: number;
   /** Image height in pixels. Defaults to 60. */
   height?: number;
+  /**  Optional difficulty level (e.g. 1-10) to control how hard the CAPTCHA is to solve. */
+  difficulty?: number;
 }
 
 /**
@@ -66,7 +68,8 @@ export class NastaliqCaptcha {
 
     const width = config?.width ?? 200;
     const height = config?.height ?? 60;
-    const image = this.renderer.render(challenge.answer, width, height);
+    const difficulty = config?.difficulty ?? 5;
+    const image = this.renderer.render(challenge.answer, width, height, difficulty);
 
     return {
       image,

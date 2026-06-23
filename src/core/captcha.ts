@@ -30,9 +30,6 @@ export class CaptchaCore {
    *          the original number it came from (`raw`).
    */
   create(): CaptchaChallenge {
-    // NOTE: randomInt's upper bound is EXCLUSIVE, so this actually generates
-    // numbers in the range 100–998, not 100–999 as the call might suggest.
-    // Left as-is since changing it changes the output range — bump to
     const number = randomInt(100, 1000);
     const text = numberToPersian(number);
 

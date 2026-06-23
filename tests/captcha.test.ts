@@ -5,21 +5,31 @@ import { numberToPersian } from "../src/utils/number-to-persian";
 // ---------------------------------------------------------------------------
 // Mock the native `canvas` package.
 //
-// `canvas` requires compiled native bindings, so we don't want unit tests
-// depending on it being installed/buildable in every environment (CI, other
-// machines, etc). Instead we fake just enough of the Canvas 2D API surface
-// for CanvasRenderer to run against, while tracking what was drawn so tests
-// can make assertions on it.
+// `canvas` requires compiled native bindings (Cairo/Pango), so we don't want
+// unit tests depending on it being available in every environment. We fake
+// just enough of the Canvas 2D API for CanvasRenderer to run, while tracking
+// calls so tests can assert on drawing behaviour.
 //
-// IMPORTANT: measureText() below returns a width that scales with the
-// current font size. CanvasRenderer's font-fitting loop
-// (`do { fontSize--; ... } while (measureText(text).width > ...)`) shrinks
-// fontSize until the measured width fits. If measureText returned a fixed
-// width, that loop would never terminate for long text. Scaling it with
-// fontSize keeps the mock honest and lets the loop behave the way it would
-// against the real canvas library.
+// Key mock decisions:
+//
+//  - measureText() scales with the current font size so the shrink-to-fit
+//    loop (`while (measureTotal() > width - padding * 2 ...)`) actually
+//    converges instead of running forever.
+//
+//  - getImageData() returns a zeroed Uint8ClampedArray of the right size so
+//    the pixel-warp post-processing loop has real-shaped data to iterate over.
+//    createImageData() returns the same shape for the destination buffer.
+//
+//  - save() / restore() are no-ops but are tracked so tests can assert on
+//    the number of per-word context saves.
+//
+//  - scale() is a no-op but tracked for completeness.
 // ---------------------------------------------------------------------------
 jest.mock("canvas", () => {
+  // Canvas dimensions are set by createCanvas and read back by getImageData.
+  let _width = 200;
+  let _height = 60;
+
   const mockContext = {
     fillStyle: "",
     strokeStyle: "",
@@ -29,6 +39,8 @@ jest.mock("canvas", () => {
     font: "10px Nastaliq",
     shadowColor: "",
     shadowBlur: 0,
+    globalAlpha: 1,
+
     fillRect: jest.fn(),
     strokeRect: jest.fn(),
     beginPath: jest.fn(),
@@ -38,28 +50,43 @@ jest.mock("canvas", () => {
     fillText: jest.fn(),
     translate: jest.fn(),
     rotate: jest.fn(),
+    scale: jest.fn(),
+    save: jest.fn(),
+    restore: jest.fn(),
+    putImageData: jest.fn(),
+
     measureText: jest.fn((text: string) => {
-      // Extract the numeric font size currently set (e.g. "42px Nastaliq" -> 42)
       const match = /(\d+)px/.exec(mockContext.font);
       const fontSize = match ? parseInt(match[1], 10) : 10;
-      // Roughly approximate text width as proportional to font size and
-      // character count, same way a real font roughly would, so the
-      // shrink-to-fit loop in CanvasRenderer actually converges.
+      // Approximate width proportional to font size × char count so the
+      // shrink-to-fit loop in CanvasRenderer converges naturally.
       return { width: fontSize * text.length * 0.6 };
     }),
+
+    getImageData: jest.fn((_x: number, _y: number, w: number, h: number) => ({
+      data: new Uint8ClampedArray(w * h * 4),
+    })),
+
+    createImageData: jest.fn((w: number, h: number) => ({
+      data: new Uint8ClampedArray(w * h * 4),
+    })),
   };
 
   const mockCanvas = {
-    width: 0,
-    height: 0,
+    get width() {
+      return _width;
+    },
+    get height() {
+      return _height;
+    },
     getContext: jest.fn(() => mockContext),
     toBuffer: jest.fn(() => Buffer.from("fake-png-data")),
   };
 
   return {
-    createCanvas: jest.fn((width: number, height: number) => {
-      mockCanvas.width = width;
-      mockCanvas.height = height;
+    createCanvas: jest.fn((w: number, h: number) => {
+      _width = w;
+      _height = h;
       return mockCanvas;
     }),
     registerFont: jest.fn(),
@@ -68,8 +95,40 @@ jest.mock("canvas", () => {
   };
 });
 
-// Re-import after the mock is registered so CanvasRenderer picks up the fake.
 import { CanvasRenderer } from "../src/renderers/canvas.renderer";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the expected dot count for a given difficulty level using the same
+ * linear interpolation as CanvasRenderer.buildParams():
+ *   dotCount = round(200 + (5000 - 200) * (d / 10))
+ */
+function expectedDotCount(difficulty: number): number {
+  return Math.round(200 + (5000 - 200) * (difficulty / 10));
+}
+
+/**
+ * Returns the expected line count for a given difficulty level:
+ *   lineCount = round(2 + (18 - 2) * (d / 10))
+ */
+function expectedLineCount(difficulty: number): number {
+  return Math.round(2 + (18 - 2) * (difficulty / 10));
+}
+
+/**
+ * Returns the expected ghost count for a given difficulty level:
+ *   ghostCount = round(0 + 3 * (d / 10))
+ */
+function expectedGhostCount(difficulty: number): number {
+  return Math.round(3 * (difficulty / 10));
+}
+
+// ---------------------------------------------------------------------------
+// numberToPersian
+// ---------------------------------------------------------------------------
 
 describe("numberToPersian", () => {
   it("converts numbers under 20 directly from the units table", () => {
@@ -125,40 +184,40 @@ describe("numberToPersian", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// CaptchaCore
+// ---------------------------------------------------------------------------
+
 describe("CaptchaCore", () => {
   it("returns an answer/raw pair where answer is the Persian form of raw", () => {
     const core = new CaptchaCore();
     const { answer, raw } = core.create();
-
     expect(typeof raw).toBe("number");
     expect(typeof answer).toBe("string");
     expect(answer).toBe(numberToPersian(raw));
   });
 
-  it("always generates raw within the documented range (100-998 inclusive)", () => {
+  it("always generates raw within the documented range (100-999 inclusive)", () => {
     const core = new CaptchaCore();
-
-    // Run many times since the value is random; this isn't a proof, but
-    // running enough samples makes an out-of-range value very likely to
-    // surface if the range were ever changed incorrectly.
     for (let i = 0; i < 200; i++) {
       const { raw } = core.create();
       expect(raw).toBeGreaterThanOrEqual(100);
-      // NOTE: randomInt's upper bound is exclusive, so 999 itself is never
-      // generated. See the NOTE comment in core/captcha.ts for details.
       expect(raw).toBeLessThan(1000);
     }
   });
 
   it("produces a non-empty answer string for every generated raw value", () => {
     const core = new CaptchaCore();
-
     for (let i = 0; i < 50; i++) {
       const { answer } = core.create();
       expect(answer.length).toBeGreaterThan(0);
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// CanvasRenderer
+// ---------------------------------------------------------------------------
 
 describe("CanvasRenderer", () => {
   let renderer: CanvasRenderer;
@@ -168,101 +227,191 @@ describe("CanvasRenderer", () => {
     jest.clearAllMocks();
   });
 
+  // ── Basic output ──────────────────────────────────────────────────────────
+
   it("returns a Buffer", () => {
-    const result = renderer.render("هفت", 200, 60);
+    const result = renderer.render("هفت", 200, 60, 5);
     expect(Buffer.isBuffer(result)).toBe(true);
   });
 
   it("creates the canvas with the requested dimensions", () => {
     const { createCanvas } = jest.requireMock("canvas") as any;
-    renderer.render("سی و دو", 240, 80);
+    renderer.render("سی و دو", 240, 80, 5);
     expect(createCanvas).toHaveBeenCalledWith(240, 80);
   });
 
-  it("draws the given text onto the canvas", () => {
+  // ── Text drawing ──────────────────────────────────────────────────────────
+
+  it("calls fillText for every word in the input", () => {
     const { __mockContext } = jest.requireMock("canvas") as any;
-    renderer.render("نهصد و نود و نه", 200, 60);
-    expect(__mockContext.fillText).toHaveBeenCalledWith("نهصد و نود و نه", 0, 0);
+    // "سی و دو" has three words; each should produce one fillText call
+    // (ghost count at difficulty 5 adds extra fillText calls but those are
+    // for the whole string, not individual words — see ghost test below).
+    renderer.render("سی و دو", 200, 60, 0); // difficulty 0 → no ghosts
+
+    const calls: string[] = __mockContext.fillText.mock.calls.map((c: any[]) => c[0]);
+    expect(calls).toContain("سی");
+    expect(calls).toContain("و");
+    expect(calls).toContain("دو");
   });
 
-  it("fills the background before drawing text (background, then noise, then text)", () => {
+  it("wraps each word in save/restore", () => {
     const { __mockContext } = jest.requireMock("canvas") as any;
-    renderer.render("یک", 200, 60);
+    const words = "یک دو سه".split(" "); // 3 words
+    renderer.render("یک دو سه", 200, 60, 0); // difficulty 0 → no ghost saves
 
-    const fillRectCallOrder = __mockContext.fillRect.mock.invocationCallOrder;
-    const fillTextCallOrder = __mockContext.fillText.mock.invocationCallOrder[0];
-
-    // First fillRect call is the background fill, and it must happen before
-    // fillText is ever called, or the text would be painted over.
-    expect(fillRectCallOrder[0]).toBeLessThan(fillTextCallOrder);
+    // One save/restore pair per word.
+    expect(__mockContext.save).toHaveBeenCalledTimes(words.length);
+    expect(__mockContext.restore).toHaveBeenCalledTimes(words.length);
   });
 
-  it("draws the expected amount of noise (1200 dots, 6 interference lines)", () => {
+  it("uses scale() for per-word distortion", () => {
     const { __mockContext } = jest.requireMock("canvas") as any;
-    renderer.render("دو", 200, 60);
-
-    // 1200 noise dots + 1 background fill = 1201 fillRect calls.
-    expect(__mockContext.fillRect).toHaveBeenCalledTimes(1201);
-    expect(__mockContext.stroke).toHaveBeenCalledTimes(6);
+    renderer.render("یک دو", 200, 60, 10); // difficulty 10 → scale variance > 0
+    expect(__mockContext.scale).toHaveBeenCalled();
   });
 
-  it("rotates and translates symmetrically (rotate/unrotate, translate/untranslate)", () => {
+  it("fills the background before drawing any text", () => {
     const { __mockContext } = jest.requireMock("canvas") as any;
-    renderer.render("سه", 200, 60);
+    renderer.render("یک", 200, 60, 0);
 
-    const rotateCalls = __mockContext.rotate.mock.calls;
-    const translateCalls = __mockContext.translate.mock.calls;
-
-    expect(rotateCalls).toHaveLength(2);
-    expect(translateCalls).toHaveLength(2);
-
-    // Second rotate call should exactly negate the first (rotate back).
-    expect(rotateCalls[1][0]).toBeCloseTo(-rotateCalls[0][0]);
-
-    // Translate should move to canvas center, then back to origin.
-    expect(translateCalls[0]).toEqual([100, 30]);
-    expect(translateCalls[1]).toEqual([-100, -30]);
+    const firstFillRect = __mockContext.fillRect.mock.invocationCallOrder[0];
+    const firstFillText = __mockContext.fillText.mock.invocationCallOrder[0];
+    expect(firstFillRect).toBeLessThan(firstFillText);
   });
+
+  // ── Noise scaling with difficulty ─────────────────────────────────────────
+
+  it("draws the correct dot count for difficulty 0", () => {
+    const { __mockContext } = jest.requireMock("canvas") as any;
+    renderer.render("دو", 200, 60, 0);
+
+    const dots = expectedDotCount(0); // 200
+    // dots + 1 background fillRect
+    expect(__mockContext.fillRect).toHaveBeenCalledTimes(dots + 1);
+  });
+
+  it("draws the correct dot count for difficulty 5 (default)", () => {
+    const { __mockContext } = jest.requireMock("canvas") as any;
+    renderer.render("دو", 200, 60, 5);
+
+    const dots = expectedDotCount(5); // 2500
+    expect(__mockContext.fillRect).toHaveBeenCalledTimes(dots + 1);
+  });
+
+  it("draws the correct dot count for difficulty 10", () => {
+    const { __mockContext } = jest.requireMock("canvas") as any;
+    renderer.render("دو", 200, 60, 10);
+
+    const dots = expectedDotCount(10); // 5000
+    expect(__mockContext.fillRect).toHaveBeenCalledTimes(dots + 1);
+  });
+
+  it("draws the correct line count for difficulty 0", () => {
+    const { __mockContext } = jest.requireMock("canvas") as any;
+    renderer.render("دو", 200, 60, 0);
+    expect(__mockContext.stroke).toHaveBeenCalledTimes(expectedLineCount(0));
+  });
+
+  it("draws the correct line count for difficulty 10", () => {
+    const { __mockContext } = jest.requireMock("canvas") as any;
+    renderer.render("دو", 200, 60, 10);
+    expect(__mockContext.stroke).toHaveBeenCalledTimes(expectedLineCount(10));
+  });
+
+  // ── Ghost / decoy layers ──────────────────────────────────────────────────
+
+  it("draws no ghost layers at difficulty 0", () => {
+    const { __mockContext } = jest.requireMock("canvas") as any;
+    renderer.render("یک", 200, 60, 0);
+
+    // At d=0, ghostCount=0. The only fillText calls should be the real words.
+    const wordCount = "یک".split(/\s+/).length;
+    expect(__mockContext.fillText).toHaveBeenCalledTimes(wordCount);
+  });
+
+  it("draws ghost layers at difficulty 10", () => {
+    const { __mockContext } = jest.requireMock("canvas") as any;
+    renderer.render("یک", 200, 60, 10);
+
+    const ghosts = expectedGhostCount(10); // 3
+    const wordCount = 1;
+    // Each ghost draws the full text string once, plus one call per real word.
+    expect(__mockContext.fillText).toHaveBeenCalledTimes(ghosts + wordCount);
+  });
+
+  // ── Pixel-warp ────────────────────────────────────────────────────────────
+
+  it("skips the pixel-warp (no getImageData) at difficulty 0", () => {
+    const { __mockContext } = jest.requireMock("canvas") as any;
+    renderer.render("یک", 200, 60, 0);
+    expect(__mockContext.getImageData).not.toHaveBeenCalled();
+  });
+
+  it("applies the pixel-warp (calls getImageData) at difficulty > 0", () => {
+    const { __mockContext } = jest.requireMock("canvas") as any;
+    renderer.render("یک", 200, 60, 5);
+    expect(__mockContext.getImageData).toHaveBeenCalled();
+  });
+
+  it("writes warped pixels back with putImageData at difficulty > 0", () => {
+    const { __mockContext } = jest.requireMock("canvas") as any;
+    renderer.render("یک", 200, 60, 5);
+    expect(__mockContext.putImageData).toHaveBeenCalled();
+  });
+
+  // ── Difficulty clamping ───────────────────────────────────────────────────
+
+  it("clamps difficulty below 0 to 0", () => {
+    const { __mockContext } = jest.requireMock("canvas") as any;
+    renderer.render("دو", 200, 60, -5);
+    // Should behave identically to difficulty 0.
+    expect(__mockContext.fillRect).toHaveBeenCalledTimes(expectedDotCount(0) + 1);
+  });
+
+  it("clamps difficulty above 10 to 10", () => {
+    const { __mockContext } = jest.requireMock("canvas") as any;
+    renderer.render("دو", 200, 60, 99);
+    expect(__mockContext.fillRect).toHaveBeenCalledTimes(expectedDotCount(10) + 1);
+  });
+
+  // ── Font fitting ──────────────────────────────────────────────────────────
 
   it("shrinks the font until the text fits within the canvas width", () => {
     const { __mockContext } = jest.requireMock("canvas") as any;
-    // Long text forces the shrink loop to run through multiple sizes.
-    renderer.render("نهصد و نود و نه و هشتاد و هشت", 200, 60);
+    renderer.render("نهصد و نود و نه و هشتاد و هشت", 200, 60, 0);
 
-    const finalFont = __mockContext.font;
-    const match = /(\d+)px/.exec(finalFont);
+    const match = /(\d+)px/.exec(__mockContext.font);
     const finalSize = match ? parseInt(match[1], 10) : NaN;
-
-    // Starting size is 100 and the loop only decrements, so the result
-    // must be strictly smaller for any text long enough to need shrinking.
     expect(finalSize).toBeLessThan(100);
     expect(finalSize).toBeGreaterThan(0);
   });
 
-  it("terminates the font-fitting loop even for very short text (near max size)", () => {
-    // Regression guard: short text should still terminate quickly and
-    // land on a sensible (large) font size rather than hitting an
-    // infinite loop or shrinking all the way to a tiny size.
-    expect(() => renderer.render("یک", 200, 60)).not.toThrow();
+  it("terminates without throwing for very short text", () => {
+    expect(() => renderer.render("یک", 200, 60, 5)).not.toThrow();
   });
 });
+
+// ---------------------------------------------------------------------------
+// NastaliqCaptcha (integration)
+// ---------------------------------------------------------------------------
 
 describe("NastaliqCaptcha (integration)", () => {
   const captcha = new NastaliqCaptcha();
 
-  it("should work with config", () => {
-    const { image, answer } = captcha.generate({ width: 200, height: 60 });
+  it("works with a full config object", () => {
+    const { image, answer } = captcha.generate({ width: 200, height: 60, difficulty: 5 });
     expect(Buffer.isBuffer(image)).toBe(true);
     expect(typeof answer).toBe("string");
   });
 
-  it("should work without config", () => {
+  it("works without any config", () => {
     const { image, answer } = captcha.generate();
     expect(Buffer.isBuffer(image)).toBe(true);
     expect(typeof answer).toBe("string");
   });
 
-  it("applies default dimensions (200x60) when no config is given", () => {
+  it("applies default dimensions (200×60) when no config is given", () => {
     const { createCanvas } = jest.requireMock("canvas") as any;
     createCanvas.mockClear();
 
@@ -275,15 +424,36 @@ describe("NastaliqCaptcha (integration)", () => {
     const { createCanvas } = jest.requireMock("canvas") as any;
     createCanvas.mockClear();
 
-    captcha.generate({ width: 300 }); // height omitted -> should default to 60
-
+    captcha.generate({ width: 300 }); // height omitted → should default to 60
     expect(createCanvas).toHaveBeenCalledWith(300, 60);
   });
 
-  it("returns the same answer that was used to render the image text", () => {
+  it("applies default difficulty (5) when omitted from config", () => {
     const { __mockContext } = jest.requireMock("canvas") as any;
-    const { answer } = captcha.generate();
+    jest.clearAllMocks();
 
-    expect(__mockContext.fillText).toHaveBeenCalledWith(answer, 0, 0);
+    captcha.generate({ width: 200, height: 60 }); // difficulty omitted
+    expect(__mockContext.fillRect).toHaveBeenCalledTimes(expectedDotCount(5) + 1);
+  });
+
+  it("passes difficulty through to the renderer", () => {
+    const { __mockContext } = jest.requireMock("canvas") as any;
+    jest.clearAllMocks();
+
+    captcha.generate({ difficulty: 0 });
+    expect(__mockContext.fillRect).toHaveBeenCalledTimes(expectedDotCount(0) + 1);
+  });
+
+  it("returns the same answer string used to render the image text", () => {
+    const { __mockContext } = jest.requireMock("canvas") as any;
+    jest.clearAllMocks();
+
+    const { answer } = captcha.generate({ difficulty: 0 }); // d=0 → no ghosts
+    const drawnTexts: string[] = __mockContext.fillText.mock.calls.map((c: any[]) => c[0]);
+
+    // Every word of the answer must appear in at least one fillText call.
+    for (const word of answer.split(/\s+/)) {
+      expect(drawnTexts).toContain(word);
+    }
   });
 });

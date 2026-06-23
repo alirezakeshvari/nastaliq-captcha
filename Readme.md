@@ -148,10 +148,6 @@ NastaliqCaptcha.generate()
   └─ CanvasRenderer.render()     → PNG Buffer
 ```
 
-### Known limitation
-
-The generated number range is documented as 100–999, but currently produces **100–998** (the upper bound of `crypto.randomInt` is exclusive). This doesn't affect usage — just noting it in case you're relying on 999 being a possible value.
-
 ---
 
 ## Testing
