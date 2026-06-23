@@ -36,7 +36,7 @@ const captcha = new NastaliqCaptcha();
 
 const { image, answer } = captcha.generate();
 // image  -> PNG Buffer, send this to the client
-// answer -> Persian text string, e.g. "چهارصد و نوزده"
+// answer -> Number, e.g. 419
 ```
 
 ### Custom dimensions
@@ -54,7 +54,7 @@ Both `width` and `height` are optional and independently default to `200` and `6
 
 ## ⚠️ Important: handling the answer securely
 
-`generate()` returns both the rendered `image` **and** the plaintext `answer` in the same object. This is intentional — the package itself doesn't assume how you store sessions — but it means **the calling code is responsible for keeping `answer` away from the client.**
+`generate()` returns both the rendered `image` **and** the number `answer` in the same object. This is intentional — the package itself doesn't assume how you store sessions — but it means **the calling code is responsible for keeping `answer` away from the client.**
 
 If you send the full `{ image, answer }` object straight back in an API response, the CAPTCHA provides no protection at all: anyone can read the answer directly out of the response body without ever looking at the image.
 
@@ -129,10 +129,10 @@ Generates a new random challenge and renders it as an image.
 
 **Returns** `{ image: Buffer; answer: string }`
 
-| Field    | Type     | Description                                                                                                                                                        |
-| -------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `image`  | `Buffer` | PNG image buffer                                                                                                                                                   |
-| `answer` | `string` | The correct answer, in Persian words (e.g. `"بیست و سه"`). Handle this server-side only — see [security section](#️-important-handling-the-answer-securely) above. |
+| Field    | Type     | Description                                                                                                                             |
+| -------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `image`  | `Buffer` | PNG image buffer                                                                                                                        |
+| `answer` | `number` | The correct answer (e.g. `23`). Handle this server-side only — see [security section](#️-important-handling-the-answer-securely) above. |
 
 ---
 
