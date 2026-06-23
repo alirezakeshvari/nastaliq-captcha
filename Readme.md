@@ -45,6 +45,7 @@ const { image, answer } = captcha.generate();
 const { image, answer } = captcha.generate({
   width: 240,
   height: 80,
+  difficulty: 5,
 });
 ```
 
@@ -122,10 +123,11 @@ Creates a new CAPTCHA generator instance. No configuration needed at constructio
 
 Generates a new random challenge and renders it as an image.
 
-| Param           | Type     | Default | Description                   |
-| --------------- | -------- | ------- | ----------------------------- |
-| `config.width`  | `number` | `200`   | Output image width in pixels  |
-| `config.height` | `number` | `60`    | Output image height in pixels |
+| Param               | Type     | Default | Description                                                                                                                                                     |
+| ------------------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `config.width`      | `number` | `200`   | Output image width in pixels                                                                                                                                    |
+| `config.height`     | `number` | `60`    | Output image height in pixels                                                                                                                                   |
+| `config.difficulty` | `number` | `5`     | Visual distortion level from `0` (minimal noise) to `10` (maximum noise). Controls the density of interference dots and lines, and the degree of text rotation. |
 
 **Returns** `{ image: Buffer; answer: string }`
 
